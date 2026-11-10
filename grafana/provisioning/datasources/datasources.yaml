@@ -1,0 +1,26 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      timeInterval: 15s
+
+  # agentgateway request logs (table request_logs), read-only role
+  - name: agentgateway Postgres
+    uid: agentgateway-postgres
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: postgres:5432
+    user: $GRAFANA_DB_USER
+    jsonData:
+      database: $POSTGRES_DB
+      sslmode: disable
+      postgresVersion: 1800
+      timescaledb: false
+    secureJsonData:
+      password: $GRAFANA_DB_PASSWORD

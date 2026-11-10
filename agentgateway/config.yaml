@@ -1,0 +1,73 @@
+# yaml-language-server: $schema=https://agentgateway.dev/schema/config
+#
+# agentgateway: LLM gateway on port 4000, MCP gateway on port 3000.
+#
+# Environment variables are expanded across the whole file before parsing, so a
+# dollar sign anywhere (comments and CEL included) is read as a variable.
+# The values come from .env via compose.yaml.
+#
+# storage.mode=hybrid: this file stays read-only and is the base; whatever is
+# changed in the admin UI is stored as an overlay in Postgres. Request logs
+# (tokens, latency, user) go into the same database (table request_logs).
+
+config:
+  # Admin UI. Bound to 127.0.0.1 on the host by compose.yaml.
+  adminAddr: 0.0.0.0:15000
+  # Prometheus metrics at /metrics, scraped by prometheus over the compose network.
+  statsAddr: 0.0.0.0:15020
+  readinessAddr: 0.0.0.0:15021
+  database:
+    url: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    maxConnections: 5
+  storage:
+    mode: hybrid
+  # OpenWebUI sends the user with ENABLE_FORWARD_USER_INFO_HEADERS=true;
+  # this lands in request_logs.agentgateway_user.
+  standardAttributes:
+    user: default(request.headers["x-openwebui-user-email"], "anonymous")
+  logging:
+    format: json
+  # AES-256-GCM key for MCP session tokens (openssl rand -hex 32)
+  session:
+    key: ${AGW_SESSION_KEY}
+  mcp:
+    sessionTtl: 30m
+
+gateways:
+  llm:
+    port: 4000
+  mcp:
+    port: 3000
+
+# OpenAI-compatible API: /v1/models, /v1/chat/completions, ...
+llm:
+  gateways: llm
+  policies:
+    apiKey:
+      mode: strict
+      keys:
+      - key: ${AGW_LLM_API_KEY}
+        metadata:
+          name: openwebui
+  models:
+  - name: ${VLLM_MODEL_NAME}
+    provider:
+      custom:
+        providerOverride: vllm
+        formats:
+        - type: completions
+    params:
+      baseUrl: http://vllm:8000/v1
+      model: ${VLLM_MODEL_NAME}
+
+# Virtual MCP server at /mcp (streamable HTTP) and /sse.
+# All incoming request headers are forwarded to the targets, including the
+# OpenWebUI session JWT in Authorization, which codebox verifies itself.
+mcp:
+  gateways: mcp
+  # codebox runs stateless_http, so no session state is needed on the gateway.
+  statefulMode: stateless
+  targets:
+  - name: codebox
+    mcp:
+      host: http://codebox:8000/mcp

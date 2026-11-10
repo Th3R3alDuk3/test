@@ -1,0 +1,1651 @@
+{
+  "uid": "overview",
+  "title": "Overview",
+  "description": "Start page: health of agentgateway, every LLM backend and the MCP endpoint, plus the key numbers. Panels link to LLM Overview and MCP Overview.",
+  "tags": [
+    "agentgateway",
+    "llm",
+    "mcp"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "schemaVersion": 39,
+  "version": 1,
+  "fiscalYearStartMonth": 0,
+  "liveNow": false,
+  "links": [
+    {
+      "title": "LLM Overview",
+      "type": "link",
+      "url": "/d/llm-overview/llm-overview",
+      "icon": "dashboard",
+      "keepTime": true
+    },
+    {
+      "title": "MCP Overview",
+      "type": "link",
+      "url": "/d/mcp-overview/mcp-overview",
+      "icon": "dashboard",
+      "keepTime": true
+    },
+    {
+      "title": "Gateway Internals",
+      "type": "link",
+      "url": "/d/agentgateway-standalone",
+      "icon": "dashboard",
+      "keepTime": true
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Status",
+      "id": 1,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "agentgateway",
+      "description": "Whether Prometheus reaches the agentgateway metrics endpoint.",
+      "id": 2,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 0,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "UP",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "value",
+        "orientation": "auto",
+        "showPercentChange": false,
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "up{job=\"agentgateway\"}",
+          "legendFormat": "agentgateway",
+          "refId": "A",
+          "range": false,
+          "instant": true
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "LLM backends",
+      "description": "One tile per model, as agentgateway sees its backend: share of requests without a 5xx in the last 5 minutes. OK >= 99 %, DEGRADED >= 90 %, FAILING below. A stopped backend shows up as 503 UpstreamFailure. NO TRAFFIC = no requests in the last 5 minutes.",
+      "id": 3,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 14,
+        "x": 4,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "NO TRAFFIC",
+                  "color": "#8e8e8e",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "NO TRAFFIC",
+                  "color": "#8e8e8e",
+                  "index": 1
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.99,
+                "to": 1,
+                "result": {
+                  "text": "OK",
+                  "color": "green",
+                  "index": 2
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.9,
+                "to": 0.99,
+                "result": {
+                  "text": "DEGRADED",
+                  "color": "yellow",
+                  "index": 3
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0,
+                "to": 0.9,
+                "result": {
+                  "text": "FAILING",
+                  "color": "red",
+                  "index": 4
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.9
+              },
+              {
+                "color": "green",
+                "value": 0.99
+              }
+            ]
+          },
+          "noValue": "no requests since agentgateway started"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "showPercentChange": false,
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_replace((sum by (backend) (rate(agentgateway_requests_total{protocol=\"llm\",backend=~\"/llm:model:.+\",status!~\"5..\"}[5m])) or sum by (backend) (rate(agentgateway_requests_total{protocol=\"llm\",backend=~\"/llm:model:.+\"}[5m])) * 0) / sum by (backend) (rate(agentgateway_requests_total{protocol=\"llm\",backend=~\"/llm:model:.+\"}[5m])), \"model\", \"$1\", \"backend\", \"/llm:model:(.+):[0-9]+\")",
+          "legendFormat": "{{model}}",
+          "refId": "A",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "links": [
+        {
+          "title": "Open LLM Overview",
+          "url": "/d/llm-overview/llm-overview?${__url_time_range}"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "MCP endpoint",
+      "description": "Share of /mcp requests without a 5xx in the last 5 minutes, for all MCP servers together: agentgateway reports MCP failures (500 reason MCP) on the virtual endpoint, not per server.",
+      "id": 4,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "NO TRAFFIC",
+                  "color": "#8e8e8e",
+                  "index": 0
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "NO TRAFFIC",
+                  "color": "#8e8e8e",
+                  "index": 1
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.99,
+                "to": 1,
+                "result": {
+                  "text": "OK",
+                  "color": "green",
+                  "index": 2
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.9,
+                "to": 0.99,
+                "result": {
+                  "text": "DEGRADED",
+                  "color": "yellow",
+                  "index": 3
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0,
+                "to": 0.9,
+                "result": {
+                  "text": "FAILING",
+                  "color": "red",
+                  "index": 4
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.9
+              },
+              {
+                "color": "green",
+                "value": 0.99
+              }
+            ]
+          },
+          "noValue": "no requests since agentgateway started"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "value",
+        "orientation": "auto",
+        "showPercentChange": false,
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum (rate(agentgateway_requests_total{listener=\"mcp\",status!~\"5..\"}[5m])) or sum (rate(agentgateway_requests_total{listener=\"mcp\"}[5m])) * 0) / sum (rate(agentgateway_requests_total{listener=\"mcp\"}[5m]))",
+          "legendFormat": "MCP",
+          "refId": "A",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "links": [
+        {
+          "title": "Open MCP Overview",
+          "url": "/d/mcp-overview/mcp-overview?${__url_time_range}"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "LLMs",
+      "id": 5,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Requests/s",
+      "description": "",
+      "id": 6,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 0,
+        "y": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "orientation": "auto",
+        "showPercentChange": false,
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(agentgateway_requests_total{protocol=\"llm\"}[$__rate_interval])) or vector(0)",
+          "legendFormat": "requests/s",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "links": [
+        {
+          "title": "Open LLM Overview",
+          "url": "/d/llm-overview/llm-overview?${__url_time_range}"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Output tokens/s",
+      "description": "",
+      "id": 7,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 4,
+        "y": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "orientation": "auto",
+        "showPercentChange": false,
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(agentgateway_gen_ai_client_token_usage_sum{gen_ai_token_type=\"output\"}[$__rate_interval])) or vector(0)",
+          "legendFormat": "tokens/s",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "links": [
+        {
+          "title": "Open LLM Overview",
+          "url": "/d/llm-overview/llm-overview?${__url_time_range}"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "TTFT p95",
+      "description": "Time to first token over all models, streaming requests.",
+      "id": 8,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 8,
+        "y": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "orientation": "auto",
+        "showPercentChange": false,
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(agentgateway_gen_ai_server_time_to_first_token_bucket{gen_ai_request_model=~\".+\"}[$__rate_interval])))",
+          "legendFormat": "TTFT",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "links": [
+        {
+          "title": "Open LLM Overview",
+          "url": "/d/llm-overview/llm-overview?${__url_time_range}"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "5xx share",
+      "description": "",
+      "id": 9,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 12,
+        "y": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.01
+              },
+              {
+                "color": "red",
+                "value": 0.05
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "orientation": "auto",
+        "showPercentChange": false,
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(rate(agentgateway_requests_total{protocol=\"llm\",status=~\"5..\"}[$__rate_interval])) or vector(0)) / (sum(rate(agentgateway_requests_total{protocol=\"llm\"}[$__rate_interval])) > 0)",
+          "legendFormat": "5xx share",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "links": [
+        {
+          "title": "Open LLM Overview",
+          "url": "/d/llm-overview/llm-overview?${__url_time_range}"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Models used",
+      "description": "Distinct models with requests in the time range.",
+      "id": 10,
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "agentgateway-postgres"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 16,
+        "y": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "orientation": "auto",
+        "showPercentChange": false,
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "agentgateway-postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(DISTINCT gen_ai_request_model) AS \"models\" FROM request_logs\nWHERE $__timeFilter(completed_at) AND gen_ai_request_model IS NOT NULL",
+          "refId": "A"
+        }
+      ],
+      "links": [
+        {
+          "title": "Open LLM Overview",
+          "url": "/d/llm-overview/llm-overview?${__url_time_range}"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Active users",
+      "description": "Distinct users with LLM requests in the time range.",
+      "id": 11,
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "agentgateway-postgres"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 20,
+        "y": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "orientation": "auto",
+        "showPercentChange": false,
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "agentgateway-postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(DISTINCT agentgateway_user) AS \"users\" FROM request_logs\nWHERE $__timeFilter(completed_at) AND gen_ai_request_model IS NOT NULL",
+          "refId": "A"
+        }
+      ],
+      "links": [
+        {
+          "title": "Open LLM Overview",
+          "url": "/d/llm-overview/llm-overview?${__url_time_range}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Requests by model",
+      "description": "",
+      "id": 12,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "axisPlacement": "auto",
+            "lineInterpolation": "smooth",
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "color": {
+            "mode": "palette-classic-by-name"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (gen_ai_request_model) (rate(agentgateway_gen_ai_server_request_duration_count{gen_ai_request_model=~\".+\"}[$__rate_interval]))",
+          "legendFormat": "{{gen_ai_request_model}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "links": [
+        {
+          "title": "Open LLM Overview",
+          "url": "/d/llm-overview/llm-overview?${__url_time_range}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Output tokens by model",
+      "description": "Tokens per second.",
+      "id": 13,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "axisPlacement": "auto",
+            "lineInterpolation": "smooth",
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "color": {
+            "mode": "palette-classic-by-name"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (gen_ai_request_model) (rate(agentgateway_gen_ai_client_token_usage_sum{gen_ai_token_type=\"output\"}[$__rate_interval]))",
+          "legendFormat": "{{gen_ai_request_model}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "links": [
+        {
+          "title": "Open LLM Overview",
+          "url": "/d/llm-overview/llm-overview?${__url_time_range}"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "MCP",
+      "id": 14,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 19
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Requests/s",
+      "description": "HTTP requests on the MCP port (3000).",
+      "id": 15,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 0,
+        "y": 20
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "orientation": "auto",
+        "showPercentChange": false,
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(agentgateway_requests_total{listener=\"mcp\"}[$__rate_interval])) or vector(0)",
+          "legendFormat": "requests/s",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "links": [
+        {
+          "title": "Open MCP Overview",
+          "url": "/d/mcp-overview/mcp-overview?${__url_time_range}"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Tool calls",
+      "description": "Tool calls in the time range.",
+      "id": 16,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 4,
+        "y": 20
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "orientation": "auto",
+        "showPercentChange": false,
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(agentgateway_mcp_requests_total{method=\"tools/call\"}[$__range])) or vector(0)",
+          "legendFormat": "tool calls",
+          "refId": "A",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "links": [
+        {
+          "title": "Open MCP Overview",
+          "url": "/d/mcp-overview/mcp-overview?${__url_time_range}"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Tools used",
+      "description": "Distinct tools called in the time range.",
+      "id": 17,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 8,
+        "y": 20
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "orientation": "auto",
+        "showPercentChange": false,
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(count by (server, resource) (increase(agentgateway_mcp_requests_total{method=\"tools/call\"}[$__range]) > 0)) or vector(0)",
+          "legendFormat": "tools",
+          "refId": "A",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "links": [
+        {
+          "title": "Open MCP Overview",
+          "url": "/d/mcp-overview/mcp-overview?${__url_time_range}"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "MCP servers used",
+      "description": "MCP targets in agentgateway that got a request in the time range.",
+      "id": 18,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 12,
+        "y": 20
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "orientation": "auto",
+        "showPercentChange": false,
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(count by (server) (increase(agentgateway_mcp_requests_total{server!=\"unknown\"}[$__range]) > 0)) or vector(0)",
+          "legendFormat": "servers",
+          "refId": "A",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "links": [
+        {
+          "title": "Open MCP Overview",
+          "url": "/d/mcp-overview/mcp-overview?${__url_time_range}"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Duration p95",
+      "description": "MCP requests; a tool call includes the tool run.",
+      "id": 19,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 16,
+        "y": 20
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "orientation": "auto",
+        "showPercentChange": false,
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(agentgateway_request_duration_seconds_bucket{listener=\"mcp\"}[$__rate_interval])))",
+          "legendFormat": "p95",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "links": [
+        {
+          "title": "Open MCP Overview",
+          "url": "/d/mcp-overview/mcp-overview?${__url_time_range}"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "5xx share",
+      "description": "",
+      "id": 20,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 20,
+        "y": 20
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.01
+              },
+              {
+                "color": "red",
+                "value": 0.05
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "orientation": "auto",
+        "showPercentChange": false,
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(rate(agentgateway_requests_total{listener=\"mcp\",status=~\"5..\"}[$__rate_interval])) or vector(0)) / (sum(rate(agentgateway_requests_total{listener=\"mcp\"}[$__rate_interval])) > 0)",
+          "legendFormat": "5xx share",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "links": [
+        {
+          "title": "Open MCP Overview",
+          "url": "/d/mcp-overview/mcp-overview?${__url_time_range}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Tool calls by tool",
+      "description": "",
+      "id": 21,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 25
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "axisPlacement": "auto",
+            "lineInterpolation": "smooth",
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "color": {
+            "mode": "palette-classic-by-name"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (server, resource) (rate(agentgateway_mcp_requests_total{method=\"tools/call\"}[$__rate_interval]))",
+          "legendFormat": "{{server}} \u00b7 {{resource}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "links": [
+        {
+          "title": "Open MCP Overview",
+          "url": "/d/mcp-overview/mcp-overview?${__url_time_range}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "MCP request duration",
+      "description": "",
+      "id": 22,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 25
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "axisPlacement": "auto",
+            "lineInterpolation": "smooth",
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p50"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p95"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(agentgateway_request_duration_seconds_bucket{listener=\"mcp\"}[$__rate_interval])))",
+          "legendFormat": "p50",
+          "refId": "A",
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(agentgateway_request_duration_seconds_bucket{listener=\"mcp\"}[$__rate_interval])))",
+          "legendFormat": "p95",
+          "refId": "B",
+          "range": true
+        }
+      ],
+      "links": [
+        {
+          "title": "Open MCP Overview",
+          "url": "/d/mcp-overview/mcp-overview?${__url_time_range}"
+        }
+      ]
+    }
+  ]
+}

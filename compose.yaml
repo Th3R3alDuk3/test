@@ -1,0 +1,241 @@
+name: agentgateway-stack
+
+# Ports on the host (see .env):
+#   4000   agentgateway LLM API (OpenAI-compatible, API key required)
+#   3000   agentgateway MCP (/mcp), codebox behind it
+#   15000  agentgateway admin UI (127.0.0.1 only)
+#   8081   Open WebUI
+#   3001   Grafana
+#   9090   Prometheus (127.0.0.1 only)
+#   5432   Postgres (127.0.0.1 only)
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+
+  # --- LLM ------------------------------------------------------------------
+
+  vllm:
+    <<: *restart
+    image: ${VLLM_IMAGE}
+    command:
+      - vllm
+      - serve
+      - ${VLLM_MODEL}
+      - --served-model-name=${VLLM_MODEL_NAME}
+      - --host=0.0.0.0
+      - --port=8000
+      - --max-model-len=${VLLM_MAX_MODEL_LEN}
+      - --gpu-memory-utilization=${VLLM_GPU_MEMORY_UTILIZATION}
+      - --enable-auto-tool-choice
+      - --tool-call-parser=qwen3_coder
+      - --reasoning-parser=qwen3
+      # Qwen3.5-0.8B answers without thinking by default, but the qwen3 parser
+      # assumes thinking unless told otherwise and would put the whole answer
+      # into "reasoning". Requests can still set enable_thinking=true.
+      - --default-chat-template-kwargs={"enable_thinking":${VLLM_ENABLE_THINKING}}
+    environment:
+      # The model is already in the local Hugging Face cache.
+      HF_HUB_OFFLINE: "1"
+    volumes:
+      - ${HF_CACHE_DIR}:/root/.cache/huggingface
+      # torch.compile cache, so restarts skip the compilation
+      - vllm-cache:/root/.cache/vllm
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10m
+
+  # --- agentgateway + Postgres ---------------------------------------------
+
+  postgres:
+    <<: *restart
+    image: postgres:18.4-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # read-only role for Grafana, created by postgres/init on first start
+      GRAFANA_DB_USER: ${GRAFANA_DB_USER}
+      GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - 127.0.0.1:5432:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  agentgateway:
+    <<: *restart
+    image: ${AGENTGATEWAY_IMAGE}
+    command: ["-f", "/config/config.yaml"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      AGW_LLM_API_KEY: ${AGW_LLM_API_KEY}
+      AGW_SESSION_KEY: ${AGW_SESSION_KEY}
+      VLLM_MODEL_NAME: ${VLLM_MODEL_NAME}
+    volumes:
+      - ./agentgateway/config.yaml:/config/config.yaml:ro
+    ports:
+      - ${AGW_LLM_PORT}:4000
+      - ${AGW_MCP_PORT}:3000
+      - 127.0.0.1:${AGW_ADMIN_PORT}:15000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      vllm:
+        condition: service_started
+      codebox:
+        condition: service_started
+
+  # --- MCP: OWUI-Codebox-MCP -----------------------------------------------
+
+  # Pulls the sandbox image into the microsandbox volume before the server
+  # starts, as a pull on the first tool call can outlast the tool timeout.
+  # Without --force an image that is already there is kept.
+  codebox-init:
+    image: ${CODEBOX_IMAGE}
+    command: ["uv", "run", "--no-sync", "msb", "pull", "${CODEBOX_SANDBOX_IMAGE}"]
+    volumes:
+      - codebox-data:/root/.microsandbox
+    restart: "no"
+
+  codebox:
+    <<: *restart
+    image: ${CODEBOX_IMAGE}
+    devices:
+      - /dev/kvm
+    environment:
+      # OpenWebUI session JWTs are signed with WEBUI_SECRET_KEY.
+      JWT_SECRET: ${WEBUI_SECRET_KEY}
+      JWT_ALGORITHM: HS256
+      # Files go to and come from OpenWebUI over the compose network.
+      OWUI_BASE_URL: http://openwebui:8080
+      OWUI_VERIFY_TLS: "false"
+      MAX_CONCURRENT_SANDBOXES: ${CODEBOX_MAX_CONCURRENT_SANDBOXES}
+      RATE_LIMIT_RPS: "5"
+      RATE_LIMIT_BURST: "10"
+      SANDBOX_IMAGE: ${CODEBOX_SANDBOX_IMAGE}
+      SANDBOX_INDEX_URL: https://pypi.org/simple
+      SANDBOX_INSECURE_HOST: ""
+      SANDBOX_PROXY: ""
+      SANDBOX_MEMORY: ${CODEBOX_SANDBOX_MEMORY}
+      SANDBOX_CPUS: ${CODEBOX_SANDBOX_CPUS}
+      SANDBOX_EXEC_TIMEOUT: "180"
+      SANDBOX_IDLE_TIMEOUT: "600"
+      SANDBOX_MAX_DURATION: "1200"
+      SANDBOX_MAX_FILE_SIZE: "52428800"
+      SANDBOX_MAX_OUTPUT: "20000"
+      SANDBOX_MAX_FILES: "10"
+    volumes:
+      - codebox-data:/root/.microsandbox
+    depends_on:
+      codebox-init:
+        condition: service_completed_successfully
+
+  # --- Open WebUI -----------------------------------------------------------
+
+  openwebui:
+    <<: *restart
+    image: ${OPENWEBUI_IMAGE}
+    environment:
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY}
+      WEBUI_URL: ${OWUI_PUBLIC_URL}
+      # Admin account created on the first start (while no user exists)
+      WEBUI_ADMIN_EMAIL: ${OWUI_ADMIN_EMAIL}
+      WEBUI_ADMIN_PASSWORD: ${OWUI_ADMIN_PASSWORD}
+      ENABLE_OLLAMA_API: "false"
+      ENABLE_OPENAI_API: "true"
+      # LLM through agentgateway
+      OPENAI_API_BASE_URLS: http://agentgateway:4000/v1
+      OPENAI_API_KEYS: ${AGW_LLM_API_KEY}
+      DEFAULT_MODELS: ${VLLM_MODEL_NAME}
+      # X-OpenWebUI-User-* headers to agentgateway (user in the request logs)
+      ENABLE_FORWARD_USER_INFO_HEADERS: "true"
+      # MCP through agentgateway. auth_type=session sends the user's OpenWebUI
+      # JWT, which agentgateway forwards to codebox. Readable by all users.
+      # Like all PersistentConfig values, it only applies on the first start;
+      # after that the admin settings in the database win.
+      TOOL_SERVER_CONNECTIONS: >-
+        [{"type": "mcp",
+          "url": "http://agentgateway:3000/mcp",
+          "path": "",
+          "auth_type": "session",
+          "key": "",
+          "config": {"enable": true,
+                     "access_grants": [{"principal_type": "user", "principal_id": "*", "permission": "read"}]},
+          "info": {"id": "codebox",
+                   "name": "Codebox",
+                   "description": "Isolated Python sandboxes (OWUI-Codebox-MCP) via agentgateway"}}]
+    volumes:
+      - openwebui-data:/app/backend/data
+    ports:
+      - ${OWUI_PORT}:8080
+    depends_on:
+      agentgateway:
+        condition: service_started
+
+  # --- Monitoring -----------------------------------------------------------
+
+  prometheus:
+    <<: *restart
+    image: prom/prometheus:v3.16.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION}
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - 127.0.0.1:${PROMETHEUS_PORT}:9090
+
+  grafana:
+    <<: *restart
+    image: grafana/grafana:12.4.7
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/overview.json
+      # used in provisioning/datasources
+      POSTGRES_DB: ${POSTGRES_DB}
+      GRAFANA_DB_USER: ${GRAFANA_DB_USER}
+      GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - ${GRAFANA_PORT}:3000
+    depends_on:
+      - prometheus
+      - postgres
+
+volumes:
+  vllm-cache:
+  postgres-data:
+  codebox-data:
+  openwebui-data:
+  prometheus-data:
+  grafana-data:

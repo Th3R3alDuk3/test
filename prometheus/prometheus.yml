@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Only agentgateway is scraped: everything about the LLMs (requests, tokens,
+# latency, errors) is measured where the traffic passes the gateway, the same
+# way for every provider. vLLM itself is not monitored.
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # config.statsAddr in agentgateway/config.yaml
+  - job_name: agentgateway
+    static_configs:
+      - targets: ["agentgateway:15020"]

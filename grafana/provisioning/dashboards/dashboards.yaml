@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: agentgateway-stack
+    folder: agentgateway
+    type: file
+    # dashboards removed from the folder are removed from Grafana too
+    disableDeletion: false
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/dashboards
