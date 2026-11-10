@@ -1,7 +1,7 @@
 {
   "uid": "llm-overview",
   "title": "LLM Overview",
-  "description": "All LLMs behind agentgateway: backend health, traffic, tokens, latency, errors and users.",
+  "description": "All LLMs behind agentgateway: backend health, traffic, tokens, latency and errors.",
   "tags": [
     "llm",
     "agentgateway"
@@ -360,7 +360,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(agentgateway_requests_total{protocol=\"llm\"}[$__rate_interval])) or vector(0)",
+          "expr": "sum(rate(agentgateway_requests_total{protocol=\"llm\",backend=~\"/llm:model:.+\"}[$__rate_interval])) or vector(0)",
           "legendFormat": "requests/s",
           "refId": "A",
           "range": true
@@ -369,7 +369,7 @@
     },
     {
       "type": "stat",
-      "title": "Output tokens/s",
+      "title": "Input tokens/s",
       "description": "All models together.",
       "id": 6,
       "datasource": {
@@ -424,6 +424,70 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "expr": "sum(rate(agentgateway_gen_ai_client_token_usage_sum{gen_ai_token_type=\"input\"}[$__rate_interval])) or vector(0)",
+          "legendFormat": "tokens/s",
+          "refId": "A",
+          "range": true
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Output tokens/s",
+      "description": "All models together.",
+      "id": 7,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 8,
+        "y": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto",
+        "orientation": "auto",
+        "showPercentChange": false,
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "expr": "sum(rate(agentgateway_gen_ai_client_token_usage_sum{gen_ai_token_type=\"output\"}[$__rate_interval])) or vector(0)",
           "legendFormat": "tokens/s",
           "refId": "A",
@@ -434,8 +498,8 @@
     {
       "type": "stat",
       "title": "5xx share",
-      "description": "Share of 5xx responses on the LLM port.",
-      "id": 7,
+      "description": "Share of 5xx responses of model requests (without /v1/models).",
+      "id": 8,
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -443,7 +507,7 @@
       "gridPos": {
         "h": 5,
         "w": 4,
-        "x": 8,
+        "x": 12,
         "y": 7
       },
       "fieldConfig": {
@@ -496,7 +560,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(sum(rate(agentgateway_requests_total{protocol=\"llm\",status=~\"5..\"}[$__rate_interval])) or vector(0)) / (sum(rate(agentgateway_requests_total{protocol=\"llm\"}[$__rate_interval])) > 0)",
+          "expr": "(sum(rate(agentgateway_requests_total{protocol=\"llm\",backend=~\"/llm:model:.+\",status=~\"5..\"}[$__rate_interval])) or vector(0)) / (sum(rate(agentgateway_requests_total{protocol=\"llm\",backend=~\"/llm:model:.+\"}[$__rate_interval])) > 0)",
           "legendFormat": "5xx share",
           "refId": "A",
           "range": true
@@ -506,76 +570,11 @@
     {
       "type": "stat",
       "title": "Requests",
-      "description": "LLM requests in the time range (request log).",
-      "id": 8,
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "agentgateway-postgres"
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 4,
-        "x": 12,
-        "y": 7
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "text",
-                "value": null
-              }
-            ]
-          },
-          "decimals": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "textMode": "auto",
-        "orientation": "auto",
-        "showPercentChange": false,
-        "wideLayout": true
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "agentgateway-postgres"
-          },
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT count(*) AS \"requests\" FROM request_logs\nWHERE $__timeFilter(completed_at) AND gen_ai_request_model IS NOT NULL",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "type": "stat",
-      "title": "Models used",
-      "description": "Distinct models with requests in the time range.",
+      "description": "Model requests in the time range.",
       "id": 9,
       "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "agentgateway-postgres"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "gridPos": {
         "h": 5,
@@ -622,25 +621,25 @@
       "targets": [
         {
           "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "agentgateway-postgres"
+            "type": "prometheus",
+            "uid": "prometheus"
           },
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT count(DISTINCT gen_ai_request_model) AS \"models\" FROM request_logs\nWHERE $__timeFilter(completed_at) AND gen_ai_request_model IS NOT NULL",
-          "refId": "A"
+          "expr": "sum(increase(agentgateway_requests_total{protocol=\"llm\",backend=~\"/llm:model:.+\"}[$__range])) or vector(0)",
+          "legendFormat": "requests",
+          "refId": "A",
+          "range": false,
+          "instant": true
         }
       ]
     },
     {
       "type": "stat",
-      "title": "Active users",
-      "description": "Distinct users with LLM requests in the time range.",
+      "title": "Models used",
+      "description": "Models with requests in the time range.",
       "id": 10,
       "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "agentgateway-postgres"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "gridPos": {
         "h": 5,
@@ -687,14 +686,14 @@
       "targets": [
         {
           "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "agentgateway-postgres"
+            "type": "prometheus",
+            "uid": "prometheus"
           },
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT count(DISTINCT agentgateway_user) AS \"users\" FROM request_logs\nWHERE $__timeFilter(completed_at) AND gen_ai_request_model IS NOT NULL",
-          "refId": "A"
+          "expr": "count(count by (backend) (increase(agentgateway_requests_total{protocol=\"llm\",backend=~\"/llm:model:.+\"}[$__range]) > 0)) or vector(0)",
+          "legendFormat": "models",
+          "refId": "A",
+          "range": false,
+          "instant": true
         }
       ]
     },
@@ -714,11 +713,11 @@
     {
       "type": "table",
       "title": "Models in the time range",
-      "description": "One row per model from the agentgateway request log.",
+      "description": "One row per model, from agentgateway metrics over the selected time range.",
       "id": 12,
       "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "agentgateway-postgres"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "gridPos": {
         "h": 7,
@@ -752,16 +751,64 @@
           {
             "matcher": {
               "id": "byName",
+              "options": "Requests"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "5xx"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Input tokens"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Output tokens"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
               "options": "Avg TTFT"
             },
             "properties": [
               {
                 "id": "unit",
-                "value": "ms"
+                "value": "s"
               },
               {
                 "id": "decimals",
-                "value": 0
+                "value": 2
               }
             ]
           },
@@ -773,11 +820,11 @@
             "properties": [
               {
                 "id": "unit",
-                "value": "ms"
+                "value": "s"
               },
               {
                 "id": "decimals",
-                "value": 0
+                "value": 2
               }
             ]
           },
@@ -789,11 +836,11 @@
             "properties": [
               {
                 "id": "unit",
-                "value": "ms"
+                "value": "s"
               },
               {
                 "id": "decimals",
-                "value": 0
+                "value": 2
               }
             ]
           }
@@ -810,18 +857,135 @@
           "fields": ""
         }
       },
-      "transformations": [],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "model": "Model",
+              "Value #A": "Requests",
+              "Value #B": "5xx",
+              "Value #C": "Input tokens",
+              "Value #D": "Output tokens",
+              "Value #E": "Avg TTFT",
+              "Value #F": "Avg duration",
+              "Value #G": "p95 duration"
+            },
+            "indexByName": {
+              "model": 0,
+              "Value #A": 1,
+              "Value #B": 2,
+              "Value #C": 3,
+              "Value #D": 4,
+              "Value #E": 5,
+              "Value #F": 6,
+              "Value #G": 7
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Requests",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
       "targets": [
         {
           "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "agentgateway-postgres"
+            "type": "prometheus",
+            "uid": "prometheus"
           },
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT\n  gen_ai_request_model                                              AS \"Model\",\n  count(*)                                                          AS \"Requests\",\n  count(DISTINCT agentgateway_user)                                 AS \"Users\",\n  sum(coalesce(input_tokens, 0))                                    AS \"Input tokens\",\n  sum(coalesce(output_tokens, 0))                                   AS \"Output tokens\",\n  avg(time_to_first_token_ms)                                       AS \"Avg TTFT\",\n  avg(duration_ms)                                                  AS \"Avg duration\",\n  percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms)         AS \"p95 duration\",\n  count(*) FILTER (WHERE http_status >= 400 OR error IS NOT NULL)   AS \"Errors\",\n  max(completed_at)                                                 AS \"Last request\"\nFROM request_logs\nWHERE $__timeFilter(completed_at) AND gen_ai_request_model IS NOT NULL\nGROUP BY 1\nORDER BY 2 DESC",
-          "refId": "A"
+          "expr": "sum by (model) (label_replace(increase(agentgateway_requests_total{protocol=\"llm\",backend=~\"/llm:model:.+\"}[$__range]), \"model\", \"$1\", \"backend\", \"/llm:model:(.+):[0-9]+\"))",
+          "legendFormat": "__auto",
+          "refId": "A",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum by (model) (label_replace(increase(agentgateway_requests_total{protocol=\"llm\",backend=~\"/llm:model:.+\",status=~\"5..\"}[$__range]), \"model\", \"$1\", \"backend\", \"/llm:model:(.+):[0-9]+\"))) or (sum by (model) (label_replace(increase(agentgateway_requests_total{protocol=\"llm\",backend=~\"/llm:model:.+\"}[$__range]), \"model\", \"$1\", \"backend\", \"/llm:model:(.+):[0-9]+\"))) * 0",
+          "legendFormat": "__auto",
+          "refId": "B",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (model) (label_replace(increase(agentgateway_gen_ai_client_token_usage_sum{gen_ai_request_model=~\".+\",gen_ai_token_type=\"input\"}[$__range]), \"model\", \"$1\", \"gen_ai_request_model\", \"(.+)\"))",
+          "legendFormat": "__auto",
+          "refId": "C",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (model) (label_replace(increase(agentgateway_gen_ai_client_token_usage_sum{gen_ai_request_model=~\".+\",gen_ai_token_type=\"output\"}[$__range]), \"model\", \"$1\", \"gen_ai_request_model\", \"(.+)\"))",
+          "legendFormat": "__auto",
+          "refId": "D",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (model) (label_replace(increase(agentgateway_gen_ai_server_time_to_first_token_sum{gen_ai_request_model=~\".+\"}[$__range]), \"model\", \"$1\", \"gen_ai_request_model\", \"(.+)\")) / sum by (model) (label_replace(increase(agentgateway_gen_ai_server_time_to_first_token_count{gen_ai_request_model=~\".+\"}[$__range]), \"model\", \"$1\", \"gen_ai_request_model\", \"(.+)\"))",
+          "legendFormat": "__auto",
+          "refId": "E",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (model) (label_replace(increase(agentgateway_gen_ai_server_request_duration_sum{gen_ai_request_model=~\".+\"}[$__range]), \"model\", \"$1\", \"gen_ai_request_model\", \"(.+)\")) / sum by (model) (label_replace(increase(agentgateway_gen_ai_server_request_duration_count{gen_ai_request_model=~\".+\"}[$__range]), \"model\", \"$1\", \"gen_ai_request_model\", \"(.+)\"))",
+          "legendFormat": "__auto",
+          "refId": "F",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, model) (label_replace(increase(agentgateway_gen_ai_server_request_duration_bucket{gen_ai_request_model=~\".+\"}[$__range]), \"model\", \"$1\", \"gen_ai_request_model\", \"(.+)\")))",
+          "legendFormat": "__auto",
+          "refId": "G",
+          "range": false,
+          "instant": true,
+          "format": "table"
         }
       ]
     },
@@ -866,7 +1030,7 @@
             "spanNulls": true,
             "axisBorderShow": false,
             "axisPlacement": "auto",
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "barAlignment": 0,
             "stacking": {
               "mode": "none",
@@ -931,7 +1095,7 @@
             "spanNulls": true,
             "axisBorderShow": false,
             "axisPlacement": "auto",
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "barAlignment": 0,
             "stacking": {
               "mode": "none",
@@ -996,7 +1160,7 @@
             "spanNulls": true,
             "axisBorderShow": false,
             "axisPlacement": "auto",
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "barAlignment": 0,
             "stacking": {
               "mode": "none",
@@ -1061,7 +1225,7 @@
             "spanNulls": true,
             "axisBorderShow": false,
             "axisPlacement": "auto",
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "barAlignment": 0,
             "stacking": {
               "mode": "none",
@@ -1126,7 +1290,7 @@
             "spanNulls": true,
             "axisBorderShow": false,
             "axisPlacement": "auto",
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "barAlignment": 0,
             "stacking": {
               "mode": "none",
@@ -1165,8 +1329,8 @@
     },
     {
       "type": "timeseries",
-      "title": "Output speed p50 by model",
-      "description": "Output tokens per second within one request (1 / time per output token).",
+      "title": "Avg output speed by model",
+      "description": "Output tokens per second within a request (1 / average time per output token, exact).",
       "id": 19,
       "datasource": {
         "type": "prometheus",
@@ -1191,7 +1355,7 @@
             "spanNulls": true,
             "axisBorderShow": false,
             "axisPlacement": "auto",
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "barAlignment": 0,
             "stacking": {
               "mode": "none",
@@ -1222,7 +1386,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "1 / histogram_quantile(0.5, sum by (le, gen_ai_request_model) (rate(agentgateway_gen_ai_server_time_per_output_token_bucket{gen_ai_request_model=~\".+\"}[$__rate_interval])))",
+          "expr": "sum by (gen_ai_request_model) (rate(agentgateway_gen_ai_server_time_per_output_token_count{gen_ai_request_model=~\".+\"}[$__rate_interval])) / sum by (gen_ai_request_model) (rate(agentgateway_gen_ai_server_time_per_output_token_sum{gen_ai_request_model=~\".+\"}[$__rate_interval]))",
           "legendFormat": "{{gen_ai_request_model}}",
           "refId": "A",
           "range": true
@@ -1257,7 +1421,7 @@
             "spanNulls": true,
             "axisBorderShow": false,
             "axisPlacement": "auto",
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "barAlignment": 0,
             "stacking": {
               "mode": "none",
@@ -1296,8 +1460,8 @@
     },
     {
       "type": "timeseries",
-      "title": "Input tokens per request p50 by model",
-      "description": "Typical prompt size including system prompt, history and tool results.",
+      "title": "Avg input tokens per request by model",
+      "description": "Prompt size including system prompt, history and tool results (sum / count, exact).",
       "id": 21,
       "datasource": {
         "type": "prometheus",
@@ -1322,7 +1486,7 @@
             "spanNulls": true,
             "axisBorderShow": false,
             "axisPlacement": "auto",
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "barAlignment": 0,
             "stacking": {
               "mode": "none",
@@ -1353,7 +1517,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.5, sum by (le, gen_ai_request_model) (rate(agentgateway_gen_ai_client_token_usage_bucket{gen_ai_request_model=~\".+\",gen_ai_token_type=\"input\"}[$__rate_interval])))",
+          "expr": "sum by (gen_ai_request_model) (rate(agentgateway_gen_ai_client_token_usage_sum{gen_ai_request_model=~\".+\",gen_ai_token_type=\"input\"}[$__rate_interval])) / sum by (gen_ai_request_model) (rate(agentgateway_gen_ai_client_token_usage_count{gen_ai_request_model=~\".+\",gen_ai_token_type=\"input\"}[$__rate_interval]))",
           "legendFormat": "{{gen_ai_request_model}}",
           "refId": "A",
           "range": true
@@ -1362,8 +1526,8 @@
     },
     {
       "type": "timeseries",
-      "title": "Output tokens per request p50 by model",
-      "description": "Typical answer length.",
+      "title": "Avg output tokens per request by model",
+      "description": "Answer length (sum / count, exact).",
       "id": 22,
       "datasource": {
         "type": "prometheus",
@@ -1388,7 +1552,7 @@
             "spanNulls": true,
             "axisBorderShow": false,
             "axisPlacement": "auto",
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "barAlignment": 0,
             "stacking": {
               "mode": "none",
@@ -1419,7 +1583,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.5, sum by (le, gen_ai_request_model) (rate(agentgateway_gen_ai_client_token_usage_bucket{gen_ai_request_model=~\".+\",gen_ai_token_type=\"output\"}[$__rate_interval])))",
+          "expr": "sum by (gen_ai_request_model) (rate(agentgateway_gen_ai_client_token_usage_sum{gen_ai_request_model=~\".+\",gen_ai_token_type=\"output\"}[$__rate_interval])) / sum by (gen_ai_request_model) (rate(agentgateway_gen_ai_client_token_usage_count{gen_ai_request_model=~\".+\",gen_ai_token_type=\"output\"}[$__rate_interval]))",
           "legendFormat": "{{gen_ai_request_model}}",
           "refId": "A",
           "range": true
@@ -1427,115 +1591,37 @@
       ]
     },
     {
-      "type": "row",
-      "title": "Users",
+      "type": "timeseries",
+      "title": "Gateway overhead p95 by model",
+      "description": "From receiving a request to calling the provider: auth, policies, parsing.",
       "id": 23,
-      "collapsed": false,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "gridPos": {
-        "h": 1,
-        "w": 24,
+        "h": 8,
+        "w": 12,
         "x": 0,
         "y": 45
       },
-      "panels": []
-    },
-    {
-      "type": "table",
-      "title": "Users by model",
-      "description": "The user comes from X-OpenWebUI-User-Email.",
-      "id": 24,
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "agentgateway-postgres"
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 10,
-        "x": 0,
-        "y": 46
-      },
       "fieldConfig": {
         "defaults": {
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "inspect": true
-          },
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "text",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "showHeader": true,
-        "cellHeight": "sm",
-        "footer": {
-          "show": false,
-          "reducer": [
-            "sum"
-          ],
-          "fields": ""
-        }
-      },
-      "transformations": [],
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "agentgateway-postgres"
-          },
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT\n  coalesce(agentgateway_user, 'unknown')  AS \"User\",\n  gen_ai_request_model                    AS \"Model\",\n  count(*)                                AS \"Requests\",\n  sum(coalesce(input_tokens, 0))          AS \"Input tokens\",\n  sum(coalesce(output_tokens, 0))         AS \"Output tokens\"\nFROM request_logs\nWHERE $__timeFilter(completed_at) AND gen_ai_request_model IS NOT NULL\nGROUP BY 1, 2\nORDER BY 5 DESC",
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "type": "timeseries",
-      "title": "Tokens by model",
-      "description": "Input + output tokens per time bucket, from the request log.",
-      "id": 25,
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "agentgateway-postgres"
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 14,
-        "x": 10,
-        "y": 46
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
+          "unit": "s",
           "min": 0,
           "custom": {
-            "drawStyle": "bars",
+            "drawStyle": "line",
             "lineWidth": 2,
-            "fillOpacity": 70,
+            "fillOpacity": 8,
             "gradientMode": "none",
             "showPoints": "never",
             "spanNulls": true,
             "axisBorderShow": false,
             "axisPlacement": "auto",
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "barAlignment": 0,
             "stacking": {
-              "mode": "normal",
+              "mode": "none",
               "group": "A"
             }
           },
@@ -1559,125 +1645,78 @@
       "targets": [
         {
           "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "agentgateway-postgres"
+            "type": "prometheus",
+            "uid": "prometheus"
           },
-          "editorMode": "code",
-          "format": "time_series",
-          "rawQuery": true,
-          "rawSql": "SELECT\n  $__timeGroupAlias(completed_at, $__interval),\n  gen_ai_request_model             AS metric,\n  sum(coalesce(total_tokens, 0))   AS tokens\nFROM request_logs\nWHERE $__timeFilter(completed_at) AND gen_ai_request_model IS NOT NULL\nGROUP BY 1, 2\nORDER BY 1",
-          "refId": "A"
+          "expr": "label_replace(histogram_quantile(0.95, sum by (le, backend) (rate(agentgateway_request_processing_seconds_bucket{listener=\"llm\",backend=~\"/llm:model:.+\"}[$__rate_interval]))), \"model\", \"$1\", \"backend\", \"/llm:model:(.+):[0-9]+\")",
+          "legendFormat": "{{model}}",
+          "refId": "A",
+          "range": true
         }
       ]
     },
     {
-      "type": "row",
-      "title": "Requests",
-      "id": 26,
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 55
-      },
-      "panels": []
-    },
-    {
-      "type": "table",
-      "title": "Recent requests",
-      "description": "Last 100 LLM requests stored by agentgateway.",
-      "id": 27,
+      "type": "timeseries",
+      "title": "Avg inter-chunk latency by model",
+      "description": "Average gap between two streamed chunks (exact). Spikes show stalls while streaming.",
+      "id": 24,
       "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "agentgateway-postgres"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "gridPos": {
-        "h": 10,
-        "w": 24,
-        "x": 0,
-        "y": 56
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 45
       },
       "fieldConfig": {
         "defaults": {
+          "unit": "s",
+          "min": 0,
           "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "inspect": true
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "axisPlacement": "auto",
+            "lineInterpolation": "linear",
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
           },
           "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "text",
-                "value": null
-              }
-            ]
+            "mode": "palette-classic-by-name"
           }
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Duration"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "ms"
-              },
-              {
-                "id": "decimals",
-                "value": 0
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "TTFT"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "ms"
-              },
-              {
-                "id": "decimals",
-                "value": 0
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "options": {
-        "showHeader": true,
-        "cellHeight": "sm",
-        "footer": {
-          "show": false,
-          "reducer": [
-            "sum"
-          ],
-          "fields": ""
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
         }
       },
-      "transformations": [],
       "targets": [
         {
           "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "agentgateway-postgres"
+            "type": "prometheus",
+            "uid": "prometheus"
           },
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT\n  completed_at                             AS \"Time\",\n  coalesce(agentgateway_user, 'unknown')   AS \"User\",\n  gen_ai_request_model                     AS \"Model\",\n  http_status                              AS \"Status\",\n  duration_ms                              AS \"Duration\",\n  time_to_first_token_ms                   AS \"TTFT\",\n  input_tokens                             AS \"Input\",\n  output_tokens                            AS \"Output\",\n  user_agent_name                          AS \"Client\",\n  error                                    AS \"Error\"\nFROM request_logs\nWHERE $__timeFilter(completed_at)\nORDER BY completed_at DESC\nLIMIT 100",
-          "refId": "A"
+          "expr": "sum by (gen_ai_request_model) (rate(agentgateway_gen_ai_server_inter_chunk_latency_sum{gen_ai_request_model=~\".+\"}[$__rate_interval])) / sum by (gen_ai_request_model) (rate(agentgateway_gen_ai_server_inter_chunk_latency_count{gen_ai_request_model=~\".+\"}[$__rate_interval]))",
+          "legendFormat": "{{gen_ai_request_model}}",
+          "refId": "A",
+          "range": true
         }
       ]
     }

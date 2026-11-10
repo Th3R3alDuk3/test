@@ -66,12 +66,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      # read-only role for Grafana, created by postgres/init on first start
-      GRAFANA_DB_USER: ${GRAFANA_DB_USER}
-      GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD}
     volumes:
       - postgres-data:/var/lib/postgresql
-      - ./postgres/init:/docker-entrypoint-initdb.d:ro
     ports:
       - 127.0.0.1:5432:5432
     healthcheck:
@@ -218,10 +214,6 @@ services:
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/overview.json
-      # used in provisioning/datasources
-      POSTGRES_DB: ${POSTGRES_DB}
-      GRAFANA_DB_USER: ${GRAFANA_DB_USER}
-      GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD}
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/etc/grafana/dashboards:ro
@@ -230,7 +222,6 @@ services:
       - ${GRAFANA_PORT}:3000
     depends_on:
       - prometheus
-      - postgres
 
 volumes:
   vllm-cache:

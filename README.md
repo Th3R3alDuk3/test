@@ -41,11 +41,10 @@ Minuten, danach liegt der Cache im Volume `vllm-cache`.
 |---|---|
 | `compose.yaml` | alle Dienste |
 | `agentgateway/config.yaml` | agentgateway-Config, read-only gemountet; `${VAR}` kommen aus `.env` |
-| `postgres/init/` | legt die read-only Rolle für Grafana an (nur beim ersten Start) |
-| `prometheus/prometheus.yml` | Scrape nur von agentgateway `:15020` (vLLM und Codebox werden nicht abgefragt) |
-| `grafana/provisioning/` | Datasources (Prometheus, Postgres) und Dashboard-Provider |
+| `prometheus/prometheus.yml` | scrapt nur agentgateway (`:15020/metrics`, 15 s), wie im agentgateway-Helm-Chart |
+| `grafana/provisioning/` | einzige Datasource Prometheus, dazu der Dashboard-Provider |
 | `grafana/dashboards/overview.json` | **Overview** (Startseite): Status und Kennzahlen von LLMs und MCP |
-| `grafana/dashboards/llm-overview.json` | **LLM Overview**: alle Modelle, Backend-Status, Nutzer, Requests |
+| `grafana/dashboards/llm-overview.json` | **LLM Overview**: alle Modelle, Backend-Status, Vergleich je Modell |
 | `grafana/dashboards/mcp-overview.json` | **MCP Overview**: alle MCP-Server und Tools |
 | `grafana/dashboards/agentgateway.json` | **Gateway Internals**: Dashboard aus dem agentgateway-Repo (v1.7.0) |
 
@@ -63,21 +62,28 @@ Overview ──▶ LLM Overview      alle Modelle
   und vom MCP-Endpunkt, darunter je ein Block *LLMs* und *MCP* mit den wichtigsten Zahlen. Ein
   Klick auf ein Panel öffnet die passende Übersicht mit demselben Zeitraum.
 - **LLM Overview:** Backend-Status je Modell, Summen, Modelltabelle, Vergleich je Modell (Requests,
-  Tokens, Latenz, Fehler nach Ursache, Tokens pro Request), Nutzer und die letzten 100 Requests.
+  Tokens, Latenz, Ausgabegeschwindigkeit, Fehler nach Ursache, Tokens pro Request, Gateway-Overhead).
 - **MCP Overview:** Endpunkt-Status, Tool-Calls je Server und Tool, Requests nach Server, Methode
   und Typ, Latenz und Fehler.
 
-Alle Daten kommen aus agentgateway: Metriken (`agentgateway_*` über Prometheus) und das
-Request-Log, das agentgateway in Postgres schreibt (`request_logs`). vLLM und Codebox werden nicht
-abgefragt.
+Prometheus und Grafana hängen nur an agentgateway, wie es das agentgateway-Helm-Chart vorsieht:
+Prometheus scrapt `agentgateway:15020/metrics` alle 15 s, Grafana liest nur Prometheus. vLLM,
+Codebox und Postgres werden von Prometheus und Grafana nicht abgefragt.
+
+- **Einzelne Requests** (User, Tokens, Dauer, Fehler) zeigt die agentgateway-Admin-UI unter
+  http://127.0.0.1:15000/ui/llm/logs und `/ui/llm/analytics`. Sie liest das Request-Log, das
+  agentgateway selbst in Postgres schreibt.
+- **Genauigkeit:** Durchschnitte (Tokens pro Request, Ausgabegeschwindigkeit, Abstand zwischen
+  Chunks) sind exakt (Summe ÷ Anzahl). p95-Werte schätzt Prometheus aus den Histogramm-Buckets
+  von agentgateway.
 
 - **Backend-Status:** Ergibt sich aus dem Anteil der Requests ohne 5xx in den letzten 5 Minuten.
   OK ab 99 %, DEGRADED ab 90 %, darunter FAILING. NO TRAFFIC heißt, es gab in dieser Zeit keine
   Requests. Ein gestopptes LLM-Backend erscheint als `503 UpstreamFailure`, ein ausgefallener
   MCP-Server als `500 MCP`.
 - **MCP:** agentgateway meldet MCP-Fehler nur für den gesamten Endpunkt `/mcp`, nicht pro Server.
-  Ins Postgres-Log schreibt agentgateway nur LLM-Requests, deshalb gibt es für MCP keine
-  Auswertung pro User.
+- **Pro User:** Die Standard-Metriken von agentgateway haben kein User-Label. Auswertungen pro User
+  gibt es daher in der Admin-UI, nicht in Grafana.
 - Neue Modelle und MCP-Server aus `config.yaml` erscheinen nach ihrem ersten Request von selbst.
 
 ## Hinweise

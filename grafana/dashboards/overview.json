@@ -505,7 +505,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(agentgateway_requests_total{protocol=\"llm\"}[$__rate_interval])) or vector(0)",
+          "expr": "sum(rate(agentgateway_requests_total{protocol=\"llm\",backend=~\"/llm:model:.+\"}[$__rate_interval])) or vector(0)",
           "legendFormat": "requests/s",
           "refId": "A",
           "range": true
@@ -618,8 +618,7 @@
                 "value": null
               }
             ]
-          },
-          "decimals": 2
+          }
         },
         "overrides": []
       },
@@ -723,7 +722,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(sum(rate(agentgateway_requests_total{protocol=\"llm\",status=~\"5..\"}[$__rate_interval])) or vector(0)) / (sum(rate(agentgateway_requests_total{protocol=\"llm\"}[$__rate_interval])) > 0)",
+          "expr": "(sum(rate(agentgateway_requests_total{protocol=\"llm\",backend=~\"/llm:model:.+\",status=~\"5..\"}[$__rate_interval])) or vector(0)) / (sum(rate(agentgateway_requests_total{protocol=\"llm\",backend=~\"/llm:model:.+\"}[$__rate_interval])) > 0)",
           "legendFormat": "5xx share",
           "refId": "A",
           "range": true
@@ -739,11 +738,11 @@
     {
       "type": "stat",
       "title": "Models used",
-      "description": "Distinct models with requests in the time range.",
+      "description": "Models with requests in the time range.",
       "id": 10,
       "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "agentgateway-postgres"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "gridPos": {
         "h": 5,
@@ -790,14 +789,14 @@
       "targets": [
         {
           "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "agentgateway-postgres"
+            "type": "prometheus",
+            "uid": "prometheus"
           },
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT count(DISTINCT gen_ai_request_model) AS \"models\" FROM request_logs\nWHERE $__timeFilter(completed_at) AND gen_ai_request_model IS NOT NULL",
-          "refId": "A"
+          "expr": "count(count by (backend) (increase(agentgateway_requests_total{protocol=\"llm\",backend=~\"/llm:model:.+\"}[$__range]) > 0)) or vector(0)",
+          "legendFormat": "models",
+          "refId": "A",
+          "range": false,
+          "instant": true
         }
       ],
       "links": [
@@ -809,12 +808,12 @@
     },
     {
       "type": "stat",
-      "title": "Active users",
-      "description": "Distinct users with LLM requests in the time range.",
+      "title": "Requests",
+      "description": "Model requests in the time range.",
       "id": 11,
       "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "agentgateway-postgres"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "gridPos": {
         "h": 5,
@@ -861,14 +860,14 @@
       "targets": [
         {
           "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "agentgateway-postgres"
+            "type": "prometheus",
+            "uid": "prometheus"
           },
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT count(DISTINCT agentgateway_user) AS \"users\" FROM request_logs\nWHERE $__timeFilter(completed_at) AND gen_ai_request_model IS NOT NULL",
-          "refId": "A"
+          "expr": "sum(increase(agentgateway_requests_total{protocol=\"llm\",backend=~\"/llm:model:.+\"}[$__range])) or vector(0)",
+          "legendFormat": "requests",
+          "refId": "A",
+          "range": false,
+          "instant": true
         }
       ],
       "links": [
@@ -906,7 +905,7 @@
             "spanNulls": true,
             "axisBorderShow": false,
             "axisPlacement": "auto",
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "barAlignment": 0,
             "stacking": {
               "mode": "none",
@@ -977,7 +976,7 @@
             "spanNulls": true,
             "axisBorderShow": false,
             "axisPlacement": "auto",
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "barAlignment": 0,
             "stacking": {
               "mode": "none",
@@ -1247,7 +1246,7 @@
     },
     {
       "type": "stat",
-      "title": "MCP servers used",
+      "title": "MCP servers",
       "description": "MCP targets in agentgateway that got a request in the time range.",
       "id": 18,
       "datasource": {
@@ -1346,8 +1345,7 @@
                 "value": null
               }
             ]
-          },
-          "decimals": 2
+          }
         },
         "overrides": []
       },
@@ -1492,7 +1490,7 @@
             "spanNulls": true,
             "axisBorderShow": false,
             "axisPlacement": "auto",
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "barAlignment": 0,
             "stacking": {
               "mode": "none",
@@ -1563,7 +1561,7 @@
             "spanNulls": true,
             "axisBorderShow": false,
             "axisPlacement": "auto",
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "barAlignment": 0,
             "stacking": {
               "mode": "none",

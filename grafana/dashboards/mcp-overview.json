@@ -292,7 +292,7 @@
     },
     {
       "type": "stat",
-      "title": "MCP servers used",
+      "title": "MCP servers",
       "description": "MCP targets in agentgateway that got a request in the time range.",
       "id": 4,
       "datasource": {
@@ -699,7 +699,7 @@
             "spanNulls": true,
             "axisBorderShow": false,
             "axisPlacement": "auto",
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "barAlignment": 0,
             "stacking": {
               "mode": "none",
@@ -777,7 +777,7 @@
             "spanNulls": true,
             "axisBorderShow": false,
             "axisPlacement": "auto",
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "barAlignment": 0,
             "stacking": {
               "mode": "none",
@@ -842,7 +842,7 @@
             "spanNulls": true,
             "axisBorderShow": false,
             "axisPlacement": "auto",
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "barAlignment": 0,
             "stacking": {
               "mode": "none",
@@ -907,7 +907,7 @@
             "spanNulls": true,
             "axisBorderShow": false,
             "axisPlacement": "auto",
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "barAlignment": 0,
             "stacking": {
               "mode": "none",
@@ -985,7 +985,7 @@
             "spanNulls": true,
             "axisBorderShow": false,
             "axisPlacement": "auto",
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "barAlignment": 0,
             "stacking": {
               "mode": "none",
@@ -1091,7 +1091,7 @@
             "spanNulls": true,
             "axisBorderShow": false,
             "axisPlacement": "auto",
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "barAlignment": 0,
             "stacking": {
               "mode": "none",
@@ -1197,7 +1197,7 @@
             "spanNulls": true,
             "axisBorderShow": false,
             "axisPlacement": "auto",
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "barAlignment": 0,
             "stacking": {
               "mode": "normal",
