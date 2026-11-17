@@ -1,0 +1,49 @@
+# Qwen3.8-Flash-Next W8A16 on 8x A100 40GB, vLLM 0.34.0
+#   MODEL_DIR=/mnt/data2/Qwen3.8-Flash-Next-W8A16 docker compose up -d
+# The host needs ~110 GB free RAM: vLLM pins the 102 GB BF16 n-gram embedding there.
+services:
+  vllm:
+    image: vllm/vllm-openai:v0.34.0
+    restart: unless-stopped
+    ipc: host
+    ulimits:
+      memlock: -1 # pinned host memory for the n-gram embedding
+    ports:
+      - "${VLLM_PORT:-8000}:8000"
+    volumes:
+      - ${MODEL_DIR:?set MODEL_DIR to the quantized checkpoint}:/model:ro
+    environment:
+      HF_HUB_OFFLINE: "1"
+      VLLM_API_KEY: ${VLLM_API_KEY:-} # empty: no auth
+      VLLM_USE_RUST_FRONTEND: "1" # Rust HTTP/tokenizer/tool+reasoning parsing, as in the Qwen recipe; tool choice is automatic
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 8
+              capabilities: [gpu]
+    command:
+      - /model
+      - --served-model-name=qwen3.8-flash-next-w8a16
+      - --tensor-parallel-size=8
+      - --enable-expert-parallel # 64 whole experts per GPU; plain TP8 pads experts 80->128 channels (1.6x VRAM)
+      - --max-model-len=102400 # 100k context per user
+      - --max-num-seqs=12 # ~15 GB KV per GPU / ~1.2 GB per 100k sequence incl. MTP; check "Maximum concurrency" at startup
+      - --max-num-batched-tokens=8192 # A100 default is 2048: 100k prompts in 50 chunks, and MTP warns below 8192
+      - --long-prefill-token-threshold=4096 # a long prompt takes at most half a step while others wait
+      - --kv-cache-dtype=fp8 # halves the attention KV cache; QSA decodes FP8 bytes on sm80
+      - --attention-config.indexer_kv_dtype=bf16 # explicit: the indexer's FP8 path needs FP8 dot products (sm89+)
+      - '--speculative-config={"method":"mtp","num_speculative_tokens":3}' # built-in MTP layer drafts 3 tokens
+      - --performance-mode=interactivity # CUDA graphs for every batch size up to 32: few, long requests
+      - --mm-encoder-tp-mode=data # small vision encoder runs whole on each GPU instead of split 8 ways
+      - '--engram-config={"cpu_offload":true}' # n-gram table (102 GB) in pinned host RAM; vLLM default, made explicit
+      - --enable-prefix-caching
+      - --tool-call-parser=qwen3_coder
+      - --reasoning-parser=qwen3
+      - --enable-prompt-tokens-details # usage.prompt_tokens_details.cached_tokens (prefix cache hits)
+      - --enable-per-request-metrics # timing metrics per response; streaming usage: agentgateway sets stream_options.include_usage
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      start_period: 30m # 237 GB load, Marlin repack, pinning the n-gram table

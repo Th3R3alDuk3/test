@@ -1,0 +1,27 @@
+[project]
+name = "llmcompressor-tools"
+version = "0.1.0"
+description = "Weight-only int quantization of BF16 models for vLLM on A100, one profile per architecture"
+requires-python = "==3.12.*"
+dependencies = [
+    # pinned: scheme presets and the model-free API change between releases
+    "llmcompressor==0.15.0",
+    "compressed-tensors==0.20.1",
+    "transformers==5.21.0",
+    "torchvision>=0.29.2", # multimodal processors (W4A16/AWQ path)
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "I", "UP", "SIM"]
