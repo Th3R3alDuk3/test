@@ -10,6 +10,8 @@ from compressed_tensors.quantization import (
     QuantizationArgs,
     QuantizationConfig,
     QuantizationScheme,
+    QuantizationStrategy,
+    QuantizationType,
     preset_name_to_scheme,
 )
 from compressed_tensors.utils import (
@@ -106,9 +108,9 @@ def quant_config(
             targets=profile.targets,
             weights=QuantizationArgs(
                 num_bits=8,
-                type="int",
+                type=QuantizationType.INT,
                 symmetric=True,
-                strategy="channel",
+                strategy=QuantizationStrategy.CHANNEL,
             ),
         )
     else:
@@ -137,15 +139,15 @@ def plan(
                 name: shard.get_slice(name)
                 for name in shard.keys()  # noqa: SIM118
             }
+            tensors = {
+                name: empty(
+                    tensor_slice.get_shape(),
+                    dtype=_DTYPES[tensor_slice.get_dtype()],
+                    device="meta",
+                )
+                for name, tensor_slice in slices.items()
+            }
 
-        tensors = {
-            name: empty(
-                tensor_slice.get_shape(),
-                dtype=_DTYPES[tensor_slice.get_dtype()],
-                device="meta",
-            )
-            for name, tensor_slice in slices.items()
-        }
         quantized_tensors = converter.validate(tensors)
 
         size_before += sum(tensor.nbytes for tensor in tensors.values())
